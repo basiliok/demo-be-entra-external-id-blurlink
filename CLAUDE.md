@@ -94,32 +94,33 @@ no en portal.azure.com.
 - [ ] MFA vía Conditional Access; control *Persistent browser session* para el prompt
       "Stay signed in?"
 
-## Fase 2 — Backend (NestJS)
+## Fase 2 — Backend (NestJS 12)
 
-> **`passport-azure-ad` está deprecado y archivado por Microsoft. No usarlo.**
-> Reemplazo: `passport-jwt` + `jwks-rsa`, o `jose` directo (más liviano, sin Passport).
+> Autenticación con **`@nestjs/authentication`** (oficial de Nest 12, v0.1.0, sin dependencias):
+> guard global que protege **todas** las rutas (`@Public()` para abrir una) y `JwtBearerProvider`,
+> que verifica tokens de un emisor externo con `jwks` + `issuer` + `audience` (RS256, llaves en
+> caché 10 min, re-fetch ante `kid` desconocido). Sin Passport: `passport-azure-ad` está archivado.
+> Validación con **Zod** vía `StandardSchemaValidationPipe` (Standard Schema, nuevo en Nest 12).
 
-- [ ] Instalar `@nestjs/config @nestjs/passport passport passport-jwt jwks-rsa
-      class-validator class-transformer` + `-D @types/passport-jwt`
-      (`jwks-rsa` 4 depende de `jose` 6, que es ESM-only: con Vitest funciona sin banderas;
-      con Jest 30 hacía falta `--experimental-vm-modules`)
-- [ ] `.env` + `.env.example` (y `.env` en `.gitignore`):
-      `ENTRA_TENANT_SUBDOMAIN`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`,
-      `ENTRA_AUDIENCE=<api client id>` (GUID, sin `api://`), `CORS_ORIGIN=http://localhost:5173`
+- [ ] Instalar `@nestjs/authentication @nestjs/config zod`
+- [ ] `.env` + `.env.example` (`.env` ya está en `.gitignore`):
+      `ENTRA_TENANT_SUBDOMAIN`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`, `CORS_ORIGIN=http://localhost:5173`
 - [ ] `ConfigModule.forRoot({ isGlobal: true })` en `src/app.module.ts`
 - [ ] CORS en `src/main.ts` — `origin: CORS_ORIGIN`, `allowedHeaders: ['Authorization','Content-Type']`
       (sin esto el preflight del SPA muere)
-- [ ] `src/auth/jwt.strategy.ts`:
-      - `secretOrKeyProvider: passportJwtSecret({ jwksUri, cache: true, rateLimit: true })`
-        con `jwksUri = https://{subdominio}.ciamlogin.com/{tenantId}/discovery/v2.0/keys`
-      - `algorithms: ['RS256']`, `audience` = client ID de la API (en tokens v2 el `aud` es siempre el GUID,
-        nunca `api://<guid>`)
-      - `issuer` **leído del discovery doc, nunca hardcodeado** (ver gotcha #1)
-      - `validate()` → `{ oid, sub, name, email, scopes: payload.scp?.split(' ') }`
-- [ ] `src/auth/jwt-auth.guard.ts` (`AuthGuard('jwt')`)
-- [ ] `src/auth/scopes.guard.ts` + decorador `@Scopes('Blurlinks.Read')` leyendo el claim `scp`.
-      **401** si el token es inválido, **403** si falta el scope
-- [ ] `ValidationPipe` global + DTOs
+- [ ] Provider async que lee el discovery doc al arrancar → `issuer` + `jwks_uri`
+      (**nunca hardcodeados**, ver gotcha #1)
+- [ ] `src/auth/entra-jwt.auth.ts` — `extends JwtBearerProvider<Principal>`:
+      - `super({ realm: 'blurlink', jwks, issuer, audience })` con `audience` = client ID de la API
+        (en tokens v2 el `aud` es siempre el GUID, nunca `api://<guid>`)
+      - `registry.registerProvider(this)` en el constructor
+      - `validate(claims)` → `{ oid, sub, name, email, scopes: scp.split(' ') }`; `null` sin `oid`
+- [ ] `AuthenticationModule.forRoot({})` en `AppModule` — sin `accessToken`: la API solo verifica.
+      **401** lo responde el guard global (`missing_credentials` / `invalid_token`, RFC 6750)
+- [ ] `@Public()` en `GET /`
+- [ ] Decorador `Scopes` (`Reflector.createDecorator`) + `ScopesGuard` leyendo
+      `request.user.scopes` → **403** si falta el scope
+- [ ] `StandardSchemaValidationPipe` global + schemas Zod (`@Body({ schema })`)
 - [ ] Endpoints de demo:
       - [ ] `GET /` — público, sin guard (health check, ya existe)
       - [ ] `GET /me` — protegido, devuelve los claims decodificados
@@ -127,6 +128,8 @@ no en portal.azure.com.
       - [ ] `POST /blurlinks` — requiere `Blurlinks.ReadWrite`
       - [ ] `GET /admin` (opcional) — requiere app role, para mostrar 403 en vivo
 - [ ] Store en memoria (`Map`) filtrado por `oid` → demuestra aislamiento de datos por identidad
+- [ ] Tests con Vitest: unitarios de `ScopesGuard` y `validate()`; e2e de 200/401/403 con llaves
+      de prueba locales en lugar de Entra
 - [ ] Sincronizar Postman: variable `{{accessToken}}`, header `Authorization: Bearer {{accessToken}}`,
       y tests de **200** (token válido), **401** (sin token), **403** (scope insuficiente)
 
@@ -208,6 +211,8 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 - [Guía de migración MSAL React](https://learn.microsoft.com/en-us/entra/msal/javascript/react/migration-guide)
 
 ### Backend / proteger la API
+- [NestJS: Authentication (`@nestjs/authentication`)](https://docs.nestjs.com/security/authentication) — guard global, `@Public()`, `JwtBearerProvider` (hint de emisor externo con `jwks`), errores 401
+- [NestJS: Schema-based validation](https://github.com/nestjs/docs.nestjs.com/blob/master/content/application/validation.md) — `StandardSchemaValidationPipe` + Zod
 - [Preparar el tenant externo para llamar a una API](https://learn.microsoft.com/en-us/entra/identity-platform/how-to-web-app-node-sign-in-call-api-prepare-tenant) — grant de permisos, admin consent, formato `api://{clientId}/{scope}`
 - [Exponer scopes en una web API protegida](https://learn.microsoft.com/en-us/entra/identity-platform/scenario-protected-web-api-expose-scopes)
 - [Access tokens en Microsoft identity platform](https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens) — claims, validación, versiones
