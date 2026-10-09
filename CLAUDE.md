@@ -102,11 +102,11 @@ no en portal.azure.com.
 > caché 10 min, re-fetch ante `kid` desconocido). Sin Passport: `passport-azure-ad` está archivado.
 > Validación con **Zod** vía `StandardSchemaValidationPipe` (Standard Schema, nuevo en Nest 12).
 
-- [ ] Instalar `@nestjs/authentication @nestjs/config zod`
-- [ ] `.env` + `.env.example` (`.env` ya está en `.gitignore`):
+- [x] Instalar `@nestjs/authentication @nestjs/config zod`
+- [x] `.env` + `.env.example` (`.env` ya está en `.gitignore`):
       `ENTRA_TENANT_SUBDOMAIN`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`, `CORS_ORIGIN=http://localhost:5173`
-- [ ] `ConfigModule.forRoot({ isGlobal: true })` en `src/app.module.ts`
-- [ ] CORS en `src/main.ts` — `origin: CORS_ORIGIN`, `allowedHeaders: ['Authorization','Content-Type']`
+- [x] `ConfigModule.forRoot({ isGlobal: true })` en `src/app.module.ts`
+- [x] CORS en `src/main.ts` — `origin: CORS_ORIGIN`, `allowedHeaders: ['Authorization','Content-Type']`
       (sin esto el preflight del SPA muere)
 - [ ] Provider async que lee el discovery doc al arrancar → `issuer` + `jwks_uri`
       (**nunca hardcodeados**, ver gotcha #1)
