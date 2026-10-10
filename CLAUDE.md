@@ -108,21 +108,21 @@ no en portal.azure.com.
 - [x] `ConfigModule.forRoot({ isGlobal: true })` en `src/app.module.ts`
 - [x] CORS en `src/main.ts` — `origin: CORS_ORIGIN`, `allowedHeaders: ['Authorization','Content-Type']`
       (sin esto el preflight del SPA muere)
-- [ ] Provider async que lee el discovery doc al arrancar → `issuer` + `jwks_uri`
+- [x] Provider async que lee el discovery doc al arrancar → `issuer` + `jwks_uri`
       (**nunca hardcodeados**, ver gotcha #1)
-- [ ] `src/auth/entra-jwt.auth.ts` — `extends JwtBearerProvider<Principal>`:
+- [x] `src/auth/entra-jwt.auth.ts` — `extends JwtBearerProvider<Principal>`:
       - `super({ realm: 'blurlink', jwks, issuer, audience })` con `audience` = client ID de la API
         (en tokens v2 el `aud` es siempre el GUID, nunca `api://<guid>`)
       - `registry.registerProvider(this)` en el constructor
       - `validate(claims)` → `{ oid, sub, name, email, scopes: scp.split(' ') }`; `null` sin `oid`
-- [ ] `AuthenticationModule.forRoot({})` en `AppModule` — sin `accessToken`: la API solo verifica.
+- [x] `AuthenticationModule.forRoot({})` en `AppModule` — sin `accessToken`: la API solo verifica.
       **401** lo responde el guard global (`missing_credentials` / `invalid_token`, RFC 6750)
-- [ ] `@Public()` en `GET /`
+- [x] `@Public()` en `GET /`
 - [ ] Decorador `Scopes` (`Reflector.createDecorator`) + `ScopesGuard` leyendo
       `request.user.scopes` → **403** si falta el scope
 - [ ] `StandardSchemaValidationPipe` global + schemas Zod (`@Body({ schema })`)
 - [ ] Endpoints de demo:
-      - [ ] `GET /` — público, sin guard (health check, ya existe)
+      - [x] `GET /` — público, sin guard (health check, ya existe)
       - [ ] `GET /me` — protegido, devuelve los claims decodificados
       - [ ] `GET /blurlinks` — requiere `Blurlinks.Read`
       - [ ] `POST /blurlinks` — requiere `Blurlinks.ReadWrite`
