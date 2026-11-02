@@ -39,7 +39,7 @@ verificá con `getEnabledTools`.
 # Plan de implementación
 
 Se ejecuta de a poco. **Al completar un paso, marcá su checkbox en este archivo en el mismo turno.**
-Orden sugerido: Portal → Backend (probando con token pegado a mano en Postman) → Frontend.
+Orden sugerido: Portal → Backend → Frontend (la prueba con un token real se hace desde el frontend).
 
 **Alcance:** el usuario se registra, inicia sesión y ve un mensaje de bienvenida con sus datos
 (nombre para mostrar, nombre, apellido y email), que el frontend obtiene de `GET /me` con el
@@ -132,13 +132,13 @@ no en portal.azure.com.
       con `@CurrentUser()` para el mensaje de bienvenida del frontend
 - [x] `validate()` → agregar `givenName` (`given_name`) y `familyName` (`family_name`) para que
       `GET /me` los devuelva
-- [ ] Sincronizar Postman: variable `{{accessToken}}`, header `Authorization: Bearer {{accessToken}}`,
-      y tests de **200** (token válido), **401** (sin token), **403** (scope insuficiente)
 
 ## Fase 3 — Frontend (React + Vite)
 
 Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 
+- [x] Base como los primeros commits de `blurlink-fe`: Prettier (`singleQuote`, `trailingComma: all`,
+      `printWidth: 120`, `tabWidth: 4`), `.gitattributes` (`* text=auto eol=lf`) y todo formateado
 - [ ] Instalar `@azure/msal-browser @azure/msal-react`
       (peer: `react ^19.2.1` — el React 19.2.8 del repo es compatible)
 - [ ] `.env` con prefijo `VITE_`: `VITE_ENTRA_CLIENT_ID`,
@@ -157,7 +157,7 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
       ante `InteractionRequiredAuthError`, y `Authorization: Bearer` en el fetch
 - [ ] Mensaje de bienvenida: `GET /me` con el access token → «¡Bienvenido, {name}!» y debajo
       los datos del usuario (nombre, apellido y email)
-- [ ] `vite.config.ts` → `server: { port: 5173, strictPort: true }` para que el redirect URI
+- [x] `vite.config.ts` → `server: { port: 5173, strictPort: true }` para que el redirect URI
       nunca se desalinee
 
 ---
