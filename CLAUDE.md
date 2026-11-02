@@ -118,8 +118,10 @@ no en portal.azure.com.
 - [x] `AuthenticationModule.forRoot({})` en `AppModule` — sin `accessToken`: la API solo verifica.
       **401** lo responde el guard global (`missing_credentials` / `invalid_token`, RFC 6750)
 - [x] `@Public()` en `GET /`
-- [ ] Decorador `Scopes` (`Reflector.createDecorator`) + `ScopesGuard` leyendo
-      `request.user.scopes` → **403** si falta el scope
+- [x] Decorador `RequiredScopes` (`Reflector.createDecorator`) + `ScopesGuard` leyendo
+      `request.user.scopes` → **403** si falta el scope. Uso: `@UseGuards(ScopesGuard)` en el
+      controller + `@RequiredScopes([...])` en cada método; basta **uno** de los scopes listados
+      (como `RequiredScope` de Microsoft.Identity.Web)
 - [ ] `StandardSchemaValidationPipe` global + schemas Zod (`@Body({ schema })`)
 - [ ] Endpoints de demo:
       - [x] `GET /` — público, sin guard (health check, ya existe)

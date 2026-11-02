@@ -11,6 +11,7 @@ import type { Principal } from './principal.js';
 const stringClaim = (value: unknown): string | undefined =>
   typeof value === 'string' ? value : undefined;
 
+/** No se llama directo: el guard global la usa en cada petición protegida. (get, post, put, delete) */
 @Injectable()
 export class EntraJwtAuth extends JwtBearerProvider<Principal> {
   constructor(
