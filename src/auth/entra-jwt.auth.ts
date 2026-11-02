@@ -37,6 +37,8 @@ export class EntraJwtAuth extends JwtBearerProvider<Principal> {
       oid: claims.oid,
       sub: claims.sub,
       name: stringClaim(claims.name),
+      givenName: stringClaim(claims.given_name),
+      familyName: stringClaim(claims.family_name),
       email: stringClaim(claims.email),
       scopes: typeof claims.scp === 'string' ? claims.scp.split(' ') : [],
     };

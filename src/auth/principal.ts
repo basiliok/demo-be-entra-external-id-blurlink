@@ -3,6 +3,8 @@ export interface Principal {
   oid: string;
   sub?: string;
   name?: string;
+  givenName?: string;
+  familyName?: string;
   email?: string;
   scopes: string[];
 }

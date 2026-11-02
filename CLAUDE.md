@@ -41,6 +41,10 @@ verificá con `getEnabledTools`.
 Se ejecuta de a poco. **Al completar un paso, marcá su checkbox en este archivo en el mismo turno.**
 Orden sugerido: Portal → Backend (probando con token pegado a mano en Postman) → Frontend.
 
+**Alcance:** el usuario se registra, inicia sesión y ve un mensaje de bienvenida con sus datos
+(nombre para mostrar, nombre, apellido y email), que el frontend obtiene de `GET /me` con el
+access token. Nada más.
+
 ## Fase 1 — Portal (entra.microsoft.com)
 
 Requiere rol **Tenant Creator** sobre la suscripción. Todo se hace en el Entra admin center,
@@ -62,6 +66,8 @@ no en portal.azure.com.
       consumidores no consienten; el consent lo da el admin en 1.3)
 - [x] `Add a scope` → `Blurlinks.ReadWrite` — idem
 - [x] `Token configuration > Add optional claim > Access > idtyp` (distingue token app vs app+user)
+- [x] `Token configuration > Add optional claim > Access > email, given_name, family_name`
+      (datos del usuario para `GET /me`; el access token no los trae por defecto)
 - [x] Verificar en `Manifest` que `accessTokenAcceptedVersion` / `requestedAccessTokenVersion` sea **2**
 - [x] Anotar **Application (client) ID** de la API → `e64a2bd2-3e23-4090-9b4b-5e5ecfa9708b`
 
@@ -100,7 +106,6 @@ no en portal.azure.com.
 > guard global que protege **todas** las rutas (`@Public()` para abrir una) y `JwtBearerProvider`,
 > que verifica tokens de un emisor externo con `jwks` + `issuer` + `audience` (RS256, llaves en
 > caché 10 min, re-fetch ante `kid` desconocido). Sin Passport: `passport-azure-ad` está archivado.
-> Validación con **Zod** vía `StandardSchemaValidationPipe` (Standard Schema, nuevo en Nest 12).
 
 - [x] Instalar `@nestjs/authentication @nestjs/config zod`
 - [x] `.env` + `.env.example` (`.env` ya está en `.gitignore`):
@@ -122,16 +127,11 @@ no en portal.azure.com.
       `request.user.scopes` → **403** si falta el scope. Uso: `@UseGuards(ScopesGuard)` en el
       controller + `@RequiredScopes([...])` en cada método; basta **uno** de los scopes listados
       (como `RequiredScope` de Microsoft.Identity.Web)
-- [ ] `StandardSchemaValidationPipe` global + schemas Zod (`@Body({ schema })`)
-- [ ] Endpoints de demo:
-      - [x] `GET /` — público, sin guard (health check, ya existe)
-      - [ ] `GET /me` — protegido, devuelve los claims decodificados
-      - [ ] `GET /blurlinks` — requiere `Blurlinks.Read`
-      - [ ] `POST /blurlinks` — requiere `Blurlinks.ReadWrite`
-      - [ ] `GET /admin` (opcional) — requiere app role, para mostrar 403 en vivo
-- [ ] Store en memoria (`Map`) filtrado por `oid` → demuestra aislamiento de datos por identidad
-- [ ] Tests con Vitest: unitarios de `ScopesGuard` y `validate()`; e2e de 200/401/403 con llaves
-      de prueba locales en lugar de Entra
+- [x] `GET /me` — requiere `Blurlinks.Read` (`@UseGuards(ScopesGuard)` en `AppController`);
+      devuelve el usuario del token (`{ oid, sub, name, givenName, familyName, email, scopes }`)
+      con `@CurrentUser()` para el mensaje de bienvenida del frontend
+- [x] `validate()` → agregar `givenName` (`given_name`) y `familyName` (`family_name`) para que
+      `GET /me` los devuelva
 - [ ] Sincronizar Postman: variable `{{accessToken}}`, header `Authorization: Bearer {{accessToken}}`,
       y tests de **200** (token válido), **401** (sin token), **403** (scope insuficiente)
 
@@ -144,8 +144,7 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 - [ ] `.env` con prefijo `VITE_`: `VITE_ENTRA_CLIENT_ID`,
       `VITE_ENTRA_AUTHORITY=https://{subdominio}.ciamlogin.com/`,
       `VITE_API_BASE_URL=http://localhost:3000`,
-      `VITE_API_SCOPE_READ=api://<api client id>/Blurlinks.Read`,
-      `VITE_API_SCOPE_WRITE=api://<api client id>/Blurlinks.ReadWrite`
+      `VITE_API_SCOPE_READ=api://<api client id>/Blurlinks.Read`
 - [ ] `src/authConfig.ts` — `msalConfig` (authority **sin** tenant id, `cacheLocation: 'sessionStorage'`),
       `loginRequest` (scopes vacío) y `apiRequest` (scopes de la API)
 - [ ] `src/main.tsx` — instanciar `PublicClientApplication` **fuera** del árbol de componentes,
@@ -154,13 +153,10 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 - [ ] Componentes: `SignInButton` (`loginRedirect`), `SignUpButton`
       (`loginRedirect({ prompt: 'create' })`), `SignOutButton` (`logoutRedirect`),
       `<AuthenticatedTemplate>` / `<UnauthenticatedTemplate>`
-- [ ] Panel que muestre `activeAccount.idTokenClaims` en JSON
 - [ ] `src/hooks/useApiFetch.ts` — `acquireTokenSilent` con fallback a `acquireTokenRedirect`
       ante `InteractionRequiredAuthError`, y `Authorization: Bearer` en el fetch
-- [ ] Pantallas: lista de blurlinks (GET), form de alta (POST → fuerza scope de escritura),
-      botón "llamar sin token" que muestre el 401, visor del access token decodificado
-      (`aud`, `iss`, `scp`, `oid`)
-- [ ] Opcional: `react-router` + `MsalAuthenticationTemplate` para rutas protegidas
+- [ ] Mensaje de bienvenida: `GET /me` con el access token → «¡Bienvenido, {name}!» y debajo
+      los datos del usuario (nombre, apellido y email)
 - [ ] `vite.config.ts` → `server: { port: 5173, strictPort: true }` para que el redirect URI
       nunca se desalinee
 
