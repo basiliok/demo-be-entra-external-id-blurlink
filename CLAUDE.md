@@ -78,6 +78,9 @@ no en portal.azure.com.
 - [x] Front-channel logout URL: **vacío** (solo sirve para single sign-out entre varias apps).
       El `postLogoutRedirectUri` de MSAL debe coincidir con un redirect URI registrado →
       `http://localhost:5173` ya lo cubre
+- [x] `Authentication` → agregar otro redirect URI SPA: **`http://localhost:5173/redirect.html`**.
+      MSAL v5 exige una página *redirect bridge* y su URI debe coincidir exacto (ruta incluida);
+      `http://localhost:5173` se queda para el post-logout
 - [x] `API permissions > Add a permission > APIs my organization uses` → `blurlink-demo-api` →
       **Delegated** → `Blurlinks.Read` + `Blurlinks.ReadWrite`
 - [x] `API permissions > Add a permission > Microsoft Graph > Delegated` → `openid` + `offline_access`
@@ -139,20 +142,23 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 
 - [x] Base como los primeros commits de `blurlink-fe`: Prettier (`singleQuote`, `trailingComma: all`,
       `printWidth: 120`, `tabWidth: 4`), `.gitattributes` (`* text=auto eol=lf`) y todo formateado
-- [ ] Instalar `@azure/msal-browser @azure/msal-react`
-      (peer: `react ^19.2.1` — el React 19.2.8 del repo es compatible)
-- [ ] `.env` con prefijo `VITE_`: `VITE_ENTRA_CLIENT_ID`,
-      `VITE_ENTRA_AUTHORITY=https://{subdominio}.ciamlogin.com/`,
-      `VITE_API_BASE_URL=http://localhost:3000`,
-      `VITE_API_SCOPE_READ=api://<api client id>/Blurlinks.Read`
-- [ ] `src/authConfig.ts` — `msalConfig` (authority **sin** tenant id, `cacheLocation: 'sessionStorage'`),
-      `loginRequest` (scopes vacío) y `apiRequest` (scopes de la API)
-- [ ] `src/main.tsx` — instanciar `PublicClientApplication` **fuera** del árbol de componentes,
-      **`await instance.initialize()` antes de renderizar** (obligatorio desde MSAL v3),
-      `addEventCallback` en `LOGIN_SUCCESS` → `setActiveAccount`, envolver en `<MsalProvider>`
-- [ ] Componentes: `SignInButton` (`loginRedirect`), `SignUpButton`
-      (`loginRedirect({ prompt: 'create' })`), `SignOutButton` (`logoutRedirect`),
+- [x] Instalar `@azure/msal-browser @azure/msal-react` → v5 (`5.27.0` / `5.7.4`; peer `react ^19.2.1`,
+      el React 19.2.8 del repo es compatible)
+- [x] Redirect bridge (obligatorio en MSAL v5): `redirect.html` en la raíz con
+      `broadcastResponseToMainFrame()` y segunda entrada en `vite.config.ts`
+      (`build.rolldownOptions.input`; `rollupOptions` está deprecado en Vite 8)
+- [x] `.env` + `.env.example` (`.env` en `.gitignore`): `VITE_ENTRA_CLIENT_ID`,
+      `VITE_ENTRA_AUTHORITY=https://{subdominio}.ciamlogin.com/{tenantId}`
+- [x] `src/config/msal.ts` (como `src/config/axios.ts` de `blurlink-fe`) — `msalInstance` (authority
+      **con** tenant id, ver gotcha #13; `redirectUri: '/redirect.html'`, `postLogoutRedirectUri: '/'`,
+      `cacheLocation: 'sessionStorage'`), `loginRequest` (scopes vacío) y `addEventCallback` en
+      `LOGIN_SUCCESS` → `setActiveAccount` (en v5 el payload es `AccountInfo`)
+- [x] `src/main.tsx` — `await msalInstance.initialize()` antes de renderizar y `<MsalProvider>`
+- [x] Componentes: `SignInButton` (`loginRedirect`), `SignUpButton`
+      (`loginRedirect({ prompt: PromptValue.CREATE })`), `SignOutButton` (`logoutRedirect`),
       `<AuthenticatedTemplate>` / `<UnauthenticatedTemplate>`
+- [ ] `.env`: `VITE_API_BASE_URL=http://localhost:3000` y
+      `VITE_API_SCOPE_READ=api://<api client id>/Blurlinks.Read`; `apiRequest` en `src/config/msal.ts`
 - [ ] `src/hooks/useApiFetch.ts` — `acquireTokenSilent` con fallback a `acquireTokenRedirect`
       ante `InteractionRequiredAuthError`, y `Authorization: Bearer` en el fetch
 - [ ] Mensaje de bienvenida: `GET /me` con el access token → «¡Bienvenido, {name}!» y debajo
@@ -183,6 +189,20 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 8. **`IDX10501` / "signature key not found"** → JWKS endpoint incorrecto; debe ser el de
    `ciamlogin.com`, no el de `login.microsoftonline.com`.
 9. **Token v1 vs v2** → verificar `accessTokenAcceptedVersion: 2` en el manifest de la API.
+10. **`AADSTS50011` / `redirect_uri_mismatch` con MSAL v5** → `redirectUri` apunta al redirect bridge
+    (`/redirect.html`) y esa URI exacta debe estar registrada en el SPA (paso 1.3).
+11. **`LOGIN_SUCCESS` en MSAL v5** → el payload es `AccountInfo`, no `AuthenticationResult`. Castearlo a
+    `AuthenticationResult` (como los tutoriales viejos) deja `account` en `undefined` sin error.
+12. **Errores de MSAL v5** → `error.message` es un link a la doc; para identificarlos usar `error.errorCode`.
+13. **Clic en "Iniciar sesión" / "Registrarse" y no pasa nada (`endpoints_resolution_error` en consola)**
+    → desde MSAL 5.10 se valida que el `issuer` del discovery doc coincida con la authority. Con
+    `https://{subdominio}.ciamlogin.com/` (sin tenant ID, como el tutorial oficial) MSAL la convierte a
+    `…/{subdominio}.onmicrosoft.com`, pero el `issuer` de este tenant usa el GUID
+    (`https://82c024ff-….ciamlogin.com/…`, mismo caso que el gotcha #1) → `issuer_validation_failed`,
+    envuelto como `endpoints_resolution_error`. → Authority **con** tenant ID:
+    `https://blurlinkdemo.ciamlogin.com/82c024ff-3df5-41f3-84f5-5209bdf0ff6e`. Alternativa de la doc de
+    MSAL: authority por nombre + `knownAuthorities` con `blurlinkdemo.ciamlogin.com` y
+    `82c024ff-….ciamlogin.com`
 
 ---
 
@@ -207,6 +227,11 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 - [Tutorial: preparar el tenant externo para un SPA React](https://learn.microsoft.com/en-us/entra/external-id/customers/tutorial-single-page-app-react-sign-in-prepare-tenant)
 - [Configuración de MSAL.js (referencia completa)](https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/configuration.md)
 - [Guía de migración MSAL React](https://learn.microsoft.com/en-us/entra/msal/javascript/react/migration-guide)
+- [Migrar MSAL Browser v4 → v5](https://learn.microsoft.com/en-us/entra/msal/javascript/browser/v4-migration) — redirect bridge (COOP), payload de `LOGIN_SUCCESS`, opciones removidas
+- [Migrar MSAL React v3 → v5](https://learn.microsoft.com/en-us/entra/msal/javascript/react/migration-guide-v4-v5)
+- [Redirect bridge por framework (Vite)](https://learn.microsoft.com/en-us/entra/msal/javascript/browser/redirect-bridge#vite)
+- [Prompt behavior (`create` = sign-up)](https://learn.microsoft.com/en-us/entra/identity-platform/msal-js-prompt-behavior)
+- [MSAL: authority e issuer validation en CIAM](https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/docs/authority.md) · [issue #8592](https://github.com/AzureAD/microsoft-authentication-library-for-js/issues/8592) — origen del gotcha #13
 
 ### Backend / proteger la API
 - [NestJS: Authentication (`@nestjs/authentication`)](https://docs.nestjs.com/security/authentication) — guard global, `@Public()`, `JwtBearerProvider` (hint de emisor externo con `jwks`), errores 401
