@@ -157,12 +157,14 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 - [x] Componentes: `SignInButton` (`loginRedirect`), `SignUpButton`
       (`loginRedirect({ prompt: PromptValue.CREATE })`), `SignOutButton` (`logoutRedirect`),
       `<AuthenticatedTemplate>` / `<UnauthenticatedTemplate>`
-- [ ] `.env`: `VITE_API_BASE_URL=http://localhost:3000` y
-      `VITE_API_SCOPE_READ=api://<api client id>/Blurlinks.Read`; `apiRequest` en `src/config/msal.ts`
-- [ ] `src/hooks/useApiFetch.ts` — `acquireTokenSilent` con fallback a `acquireTokenRedirect`
-      ante `InteractionRequiredAuthError`, y `Authorization: Bearer` en el fetch
-- [ ] Mensaje de bienvenida: `GET /me` con el access token → «¡Bienvenido, {name}!» y debajo
-      los datos del usuario (nombre, apellido y email)
+- [x] `.env`: `VITE_API_BASE_URL=http://localhost:3000` y
+      `VITE_API_SCOPE_READ=api://<api client id>/Blurlinks.Read`; `apiRequest` en `src/config/msal.ts`.
+      Las variables se validan con Zod al arrancar (`src/config/env.ts`)
+- [x] `src/hooks/useApiFetch.ts` — espera `inProgress === InteractionStatus.None`, `acquireTokenSilent`
+      con fallback a `acquireTokenRedirect` ante `InteractionRequiredAuthError`, `Authorization: Bearer`
+      en el fetch y la respuesta validada con un schema de Zod (`src/schemas/user.schema.ts`)
+- [x] Mensaje de bienvenida (`WelcomeMessage`): `GET /me` con el access token → «¡Bienvenido, {name}!»
+      y debajo los datos del usuario (nombre, apellido y email)
 - [x] `vite.config.ts` → `server: { port: 5173, strictPort: true }` para que el redirect URI
       nunca se desalinee
 
