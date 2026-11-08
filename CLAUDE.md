@@ -77,10 +77,13 @@ no en portal.azure.com.
       **`http://localhost:5173`**. **No habilitar implicit grant** (SPA usa auth code + PKCE)
 - [x] Front-channel logout URL: **vacío** (solo sirve para single sign-out entre varias apps).
       El `postLogoutRedirectUri` de MSAL debe coincidir con un redirect URI registrado →
-      `http://localhost:5173` ya lo cubre
-- [ ] `Authentication` → agregar otro redirect URI SPA: **`http://localhost:5173/redirect`** (reemplaza
+      `http://localhost:5173/redirect` lo cubre
+- [x] `Authentication` → agregar otro redirect URI SPA: **`http://localhost:5173/redirect`** (reemplaza
       a `http://localhost:5173/redirect.html`, que se borra). MSAL v5 exige una página *redirect bridge*
-      y su URI debe coincidir exacto (ruta incluida); `http://localhost:5173` se queda para el post-logout
+      y su URI debe coincidir exacto (ruta incluida)
+- [x] `Authentication` → quitar **`http://localhost:5173`**: con `postLogoutRedirectUri: '/redirect'` el logout
+      también vuelve por el bridge, que te deja en `/`, así que basta una sola URI. En `logoutRedirect()` el
+      bridge es opcional; en `logoutPopup()`, obligatorio (doc de MSAL en las referencias)
 - [x] `API permissions > Add a permission > APIs my organization uses` → `blurlink-demo-api` →
       **Delegated** → `Blurlinks.Read` + `Blurlinks.ReadWrite`
 - [x] `API permissions > Add a permission > Microsoft Graph > Delegated` → `openid` + `offline_access`
@@ -144,14 +147,14 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
       `printWidth: 120`, `tabWidth: 4`), `.gitattributes` (`* text=auto eol=lf`) y todo formateado
 - [x] Instalar `@azure/msal-browser @azure/msal-react` → v5 (`5.27.0` / `5.7.4`; peer `react ^19.2.1`,
       el React 19.2.8 del repo es compatible)
-- [ ] Redirect bridge (obligatorio en MSAL v5) como ruta `/redirect` de `react-router` (v8; el paquete
+- [x] Redirect bridge (obligatorio en MSAL v5) como ruta `/redirect` de `react-router` (v8; el paquete
       `react-router-dom` se eliminó en la v8): `src/pages/RedirectBridge.tsx` llama a
       `broadcastResponseToMainFrame()` y queda **fuera** de `<MsalProvider>`, que en `src/App.tsx` solo
       envuelve la ruta `/` (como el `react-router-sample` oficial de MSAL)
 - [x] `.env` + `.env.example` (`.env` en `.gitignore`): `VITE_ENTRA_CLIENT_ID`,
       `VITE_ENTRA_AUTHORITY=https://{subdominio}.ciamlogin.com/{tenantId}`
 - [x] `src/config/msal.ts` (como `src/config/axios.ts` de `blurlink-fe`) — `msalInstance` (authority
-      **con** tenant id, ver gotcha #13; `redirectUri: '/redirect'`, `postLogoutRedirectUri: '/'`,
+      **con** tenant id, ver gotcha #13; `redirectUri: '/redirect'`, `postLogoutRedirectUri: '/redirect'`,
       `cacheLocation: 'sessionStorage'`), `loginRequest` (scopes vacío) y `addEventCallback` en
       `LOGIN_SUCCESS` → `setActiveAccount` (en v5 el payload es `AccountInfo`)
 - [x] `src/main.tsx` — `await msalInstance.initialize()` antes de renderizar; `<MsalProvider>` va en
@@ -234,6 +237,7 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 - [Migrar MSAL Browser v4 → v5](https://learn.microsoft.com/en-us/entra/msal/javascript/browser/v4-migration) — redirect bridge (COOP), payload de `LOGIN_SUCCESS`, opciones removidas
 - [Migrar MSAL React v3 → v5](https://learn.microsoft.com/en-us/entra/msal/javascript/react/migration-guide-v4-v5)
 - [Redirect bridge por framework (Vite)](https://learn.microsoft.com/en-us/entra/msal/javascript/browser/redirect-bridge#vite)
+- [MSAL: logout y el redirect bridge](https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-browser/docs/redirect-bridge.md#logout-and-the-redirect-bridge) — `logoutPopup()` exige el bridge como `postLogoutRedirectUri`; en `logoutRedirect()` es opcional y, si está, te devuelve a la raíz de la app. Learn todavía no tiene esta sección
 - [Prompt behavior (`create` = sign-up)](https://learn.microsoft.com/en-us/entra/identity-platform/msal-js-prompt-behavior)
 - [MSAL: authority e issuer validation en CIAM](https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/docs/authority.md) · [issue #8592](https://github.com/AzureAD/microsoft-authentication-library-for-js/issues/8592) — origen del gotcha #13
 
