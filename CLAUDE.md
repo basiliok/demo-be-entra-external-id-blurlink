@@ -84,6 +84,10 @@ no en portal.azure.com.
 - [x] `Authentication` → quitar **`http://localhost:5173`**: con `postLogoutRedirectUri: '/redirect'` el logout
       también vuelve por el bridge, que te deja en `/`, así que basta una sola URI. En `logoutRedirect()` el
       bridge es opcional; en `logoutPopup()`, obligatorio (doc de MSAL en las referencias)
+- [x] `Token configuration > Add optional claim > ID > login_hint` → MSAL lo manda como `logout_hint` y Entra
+      cierra la sesión sin preguntar «¿De qué cuenta quiere cerrar sesión?». Solo lo traen los ID tokens
+      emitidos después del cambio: hay que volver a iniciar sesión. La página «Cerró la sesión de su cuenta»
+      se sigue viendo un momento: es Entra cerrando la sesión antes de volver a la app
 - [x] `API permissions > Add a permission > APIs my organization uses` → `blurlink-demo-api` →
       **Delegated** → `Blurlinks.Read` + `Blurlinks.ReadWrite`
 - [x] `API permissions > Add a permission > Microsoft Graph > Delegated` → `openid` + `offline_access`
@@ -162,6 +166,8 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 - [x] Componentes: `SignInButton` (`loginRedirect`), `SignUpButton`
       (`loginRedirect({ prompt: PromptValue.CREATE })`), `SignOutButton` (`logoutRedirect`),
       `<AuthenticatedTemplate>` / `<UnauthenticatedTemplate>`
+- [x] `SignOutButton` → `logoutRedirect({ account: activeAccount })` con `instance.getActiveAccount()`: MSAL
+      solo saca el `logout_hint` del claim `login_hint` si recibe la cuenta (paso 1.3)
 - [x] `.env`: `VITE_API_BASE_URL=http://localhost:3000` y
       `VITE_API_SCOPE_READ=api://<api client id>/Blurlinks.Read`; `apiRequest` en `src/config/msal.ts`.
       Las variables se validan con Zod al arrancar (`src/config/env.ts`)
@@ -248,6 +254,7 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 - [Exponer scopes en una web API protegida](https://learn.microsoft.com/en-us/entra/identity-platform/scenario-protected-web-api-expose-scopes)
 - [Access tokens en Microsoft identity platform](https://learn.microsoft.com/en-us/entra/identity-platform/access-tokens) — claims, validación, versiones
 - [Configurar optional claims (`idtyp`)](https://learn.microsoft.com/en-us/entra/identity-platform/optional-claims)
+- [Sign-out request (`logout_hint`)](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc#send-a-sign-out-request) — con el claim `login_hint` como `logout_hint`, Entra no muestra el selector de cuentas al cerrar sesión
 - [Troubleshoot: errores de validación de firma](https://learn.microsoft.com/en-us/troubleshoot/entra/entra-id/app-integration/troubleshooting-signature-validation-errors) — formato de issuer y JWKS de `ciamlogin.com`
 - [`passport-azure-ad` (archivado — NO usar)](https://github.com/AzureAD/passport-azure-ad)
 
