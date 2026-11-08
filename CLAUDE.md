@@ -78,9 +78,9 @@ no en portal.azure.com.
 - [x] Front-channel logout URL: **vacío** (solo sirve para single sign-out entre varias apps).
       El `postLogoutRedirectUri` de MSAL debe coincidir con un redirect URI registrado →
       `http://localhost:5173` ya lo cubre
-- [x] `Authentication` → agregar otro redirect URI SPA: **`http://localhost:5173/redirect.html`**.
-      MSAL v5 exige una página *redirect bridge* y su URI debe coincidir exacto (ruta incluida);
-      `http://localhost:5173` se queda para el post-logout
+- [ ] `Authentication` → agregar otro redirect URI SPA: **`http://localhost:5173/redirect`** (reemplaza
+      a `http://localhost:5173/redirect.html`, que se borra). MSAL v5 exige una página *redirect bridge*
+      y su URI debe coincidir exacto (ruta incluida); `http://localhost:5173` se queda para el post-logout
 - [x] `API permissions > Add a permission > APIs my organization uses` → `blurlink-demo-api` →
       **Delegated** → `Blurlinks.Read` + `Blurlinks.ReadWrite`
 - [x] `API permissions > Add a permission > Microsoft Graph > Delegated` → `openid` + `offline_access`
@@ -144,16 +144,18 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
       `printWidth: 120`, `tabWidth: 4`), `.gitattributes` (`* text=auto eol=lf`) y todo formateado
 - [x] Instalar `@azure/msal-browser @azure/msal-react` → v5 (`5.27.0` / `5.7.4`; peer `react ^19.2.1`,
       el React 19.2.8 del repo es compatible)
-- [x] Redirect bridge (obligatorio en MSAL v5): `redirect.html` en la raíz con
-      `broadcastResponseToMainFrame()` y segunda entrada en `vite.config.ts`
-      (`build.rolldownOptions.input`; `rollupOptions` está deprecado en Vite 8)
+- [ ] Redirect bridge (obligatorio en MSAL v5) como ruta `/redirect` de `react-router` (v8; el paquete
+      `react-router-dom` se eliminó en la v8): `src/pages/RedirectBridge.tsx` llama a
+      `broadcastResponseToMainFrame()` y queda **fuera** de `<MsalProvider>`, que en `src/App.tsx` solo
+      envuelve la ruta `/` (como el `react-router-sample` oficial de MSAL)
 - [x] `.env` + `.env.example` (`.env` en `.gitignore`): `VITE_ENTRA_CLIENT_ID`,
       `VITE_ENTRA_AUTHORITY=https://{subdominio}.ciamlogin.com/{tenantId}`
 - [x] `src/config/msal.ts` (como `src/config/axios.ts` de `blurlink-fe`) — `msalInstance` (authority
-      **con** tenant id, ver gotcha #13; `redirectUri: '/redirect.html'`, `postLogoutRedirectUri: '/'`,
+      **con** tenant id, ver gotcha #13; `redirectUri: '/redirect'`, `postLogoutRedirectUri: '/'`,
       `cacheLocation: 'sessionStorage'`), `loginRequest` (scopes vacío) y `addEventCallback` en
       `LOGIN_SUCCESS` → `setActiveAccount` (en v5 el payload es `AccountInfo`)
-- [x] `src/main.tsx` — `await msalInstance.initialize()` antes de renderizar y `<MsalProvider>`
+- [x] `src/main.tsx` — `await msalInstance.initialize()` antes de renderizar; `<MsalProvider>` va en
+      `src/App.tsx`, solo en la ruta `/`
 - [x] Componentes: `SignInButton` (`loginRedirect`), `SignUpButton`
       (`loginRedirect({ prompt: PromptValue.CREATE })`), `SignOutButton` (`logoutRedirect`),
       `<AuthenticatedTemplate>` / `<UnauthenticatedTemplate>`
@@ -192,7 +194,7 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
    `ciamlogin.com`, no el de `login.microsoftonline.com`.
 9. **Token v1 vs v2** → verificar `accessTokenAcceptedVersion: 2` en el manifest de la API.
 10. **`AADSTS50011` / `redirect_uri_mismatch` con MSAL v5** → `redirectUri` apunta al redirect bridge
-    (`/redirect.html`) y esa URI exacta debe estar registrada en el SPA (paso 1.3).
+    (`/redirect`) y esa URI exacta debe estar registrada en el SPA (paso 1.3).
 11. **`LOGIN_SUCCESS` en MSAL v5** → el payload es `AccountInfo`, no `AuthenticationResult`. Castearlo a
     `AuthenticationResult` (como los tutoriales viejos) deja `account` en `undefined` sin error.
 12. **Errores de MSAL v5** → `error.message` es un link a la doc; para identificarlos usar `error.errorCode`.
@@ -248,3 +250,4 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
 ### Samples
 - [Azure-Samples / ms-identity-ciam-javascript-tutorial](https://github.com/Azure-Samples/ms-identity-ciam-javascript-tutorial) — `2-Authorization/1-call-api-react` es prácticamente este caso de uso
 - [Sample: React SPA llamando API protegida (External ID)](https://learn.microsoft.com/en-us/samples/azure-samples/ms-identity-ciam-javascript-tutorial/ms-identity-ciam-javascript-tutorial-2-call-api-react/)
+- [MSAL React / react-router-sample](https://github.com/AzureAD/microsoft-authentication-library-for-js/tree/dev/samples/msal-react-samples/react-router-sample) — redirect bridge como ruta `/redirect` (`pages/Redirect.jsx`) fuera de `MsalProvider`
