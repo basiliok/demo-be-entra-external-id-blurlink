@@ -4,23 +4,24 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import type { Principal } from './principal.js';
 
 // createDecorator solo fabrica decoradores que guardan un dato (no aplica el decorador en si)
-export const RequiredScopes = Reflector.createDecorator<string[]>();
+export const RequiredScopesFromEnv = Reflector.createDecorator<string[]>();
 
 @Injectable()
 export class ScopesGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector) {}
+  constructor(
+    private readonly reflector: Reflector,
+    private readonly configService: ConfigService,
+  ) {}
 
   canActivate(context: ExecutionContext): boolean {
-    // Obtener los scopes requeridos del decorador: ['Blurlinks.Read', 'Blurlinks.ReadWrite']
-    const requiredScopes = this.reflector.getAllAndOverride(RequiredScopes, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
-    if (!requiredScopes?.length) {
+    // requiredScopes = ['Blurlinks.Read']
+    const requiredScopes = this.getScopesRequiredByEndpoint(context);
+    if (requiredScopes.length === 0) {
       return true;
     }
 
@@ -33,6 +34,21 @@ export class ScopesGuard implements CanActivate {
     }
     throw new ForbiddenException(
       `Insufficient scope. Required one of: ${requiredScopes.join(', ')}`,
+    );
+  }
+
+  private getScopesRequiredByEndpoint(context: ExecutionContext): string[] {
+    // Variables del .env que guardan los scopes requeridos: ['ENTRA_API_READ_SCOPE']
+    const scopeEnvVariableNames = this.reflector.getAllAndOverride(
+      RequiredScopesFromEnv,
+      [context.getHandler(), context.getClass()],
+    );
+    if (scopeEnvVariableNames === undefined) {
+      return [];
+    }
+
+    return scopeEnvVariableNames.map((scopeEnvVariableName) =>
+      this.configService.getOrThrow<string>(scopeEnvVariableName),
     );
   }
 }

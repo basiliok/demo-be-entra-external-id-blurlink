@@ -119,7 +119,8 @@ no en portal.azure.com.
 
 - [x] Instalar `@nestjs/authentication @nestjs/config zod`
 - [x] `.env` + `.env.example` (`.env` ya está en `.gitignore`):
-      `ENTRA_TENANT_SUBDOMAIN`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`, `CORS_ORIGIN=http://localhost:5173`
+      `ENTRA_TENANT_SUBDOMAIN`, `ENTRA_TENANT_ID`, `ENTRA_API_CLIENT_ID`, `ENTRA_API_READ_SCOPE=Blurlinks.Read`,
+      `CORS_ORIGIN=http://localhost:5173`
 - [x] `ConfigModule.forRoot({ isGlobal: true })` en `src/app.module.ts`
 - [x] CORS en `src/main.ts` — `origin: CORS_ORIGIN`, `allowedHeaders: ['Authorization','Content-Type']`
       (sin esto el preflight del SPA muere)
@@ -133,11 +134,16 @@ no en portal.azure.com.
 - [x] `AuthenticationModule.forRoot({})` en `AppModule` — sin `accessToken`: la API solo verifica.
       **401** lo responde el guard global (`missing_credentials` / `invalid_token`, RFC 6750)
 - [x] `@Public()` en `GET /`
-- [x] Decorador `RequiredScopes` (`Reflector.createDecorator`) + `ScopesGuard` leyendo
-      `request.user.scopes` → **403** si falta el scope. Uso: `@UseGuards(ScopesGuard)` en el
-      controller + `@RequiredScopes([...])` en cada método; basta **uno** de los scopes listados
-      (como `RequiredScope` de Microsoft.Identity.Web)
-- [x] `GET /me` — requiere `Blurlinks.Read` (`@UseGuards(ScopesGuard)` en `AppController`);
+- [x] Decorador `RequiredScopesFromEnv` (`Reflector.createDecorator`) con los **nombres de las variables**
+      del `.env` que guardan los scopes + `ScopesGuard`, que lee sus valores con `ConfigService` en cada
+      petición y los compara con `request.user.scopes` → **403** si falta el scope. Uso:
+      `@UseGuards(ScopesGuard)` en el controller + `@RequiredScopesFromEnv([...])` en cada método; basta
+      **uno** de los scopes listados (como `RequiredScope` con `RequiredScopesConfigurationKey` de
+      Microsoft.Identity.Web). El nombre va en el `.env` para que la demo funcione aunque el lector le ponga
+      otro nombre al scope; el decorador no puede leer el `.env` porque se evalúa antes de que
+      `ConfigModule` lo cargue
+- [x] `GET /me` — requiere el scope de `ENTRA_API_READ_SCOPE` (`Blurlinks.Read`; `@UseGuards(ScopesGuard)`
+      en `AppController`);
       devuelve el usuario del token (`{ oid, sub, name, givenName, familyName, email, scopes }`)
       con `@CurrentUser()` para el mensaje de bienvenida del frontend
 - [x] `validate()` → agregar `givenName` (`given_name`) y `familyName` (`family_name`) para que
@@ -155,10 +161,12 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
       `react-router-dom` se eliminó en la v8): `src/pages/RedirectBridge.tsx` llama a
       `broadcastResponseToMainFrame()` y queda **fuera** de `<MsalProvider>`, que en `src/App.tsx` solo
       envuelve la ruta `/` (como el `react-router-sample` oficial de MSAL)
-- [x] `.env` + `.env.example` (`.env` en `.gitignore`): `VITE_ENTRA_CLIENT_ID`,
-      `VITE_ENTRA_AUTHORITY=https://{subdominio}.ciamlogin.com/{tenantId}`
+- [x] `.env` + `.env.example` (`.env` en `.gitignore`): `VITE_ENTRA_TENANT_SUBDOMAIN`, `VITE_ENTRA_TENANT_ID`,
+      `VITE_ENTRA_SPA_CLIENT_ID`, `VITE_ENTRA_API_CLIENT_ID` y `VITE_ENTRA_API_READ_SCOPE=Blurlinks.Read`, valores
+      tal cual del portal (los mismos que el backend); las URLs se arman en código
 - [x] `src/config/msal.ts` (como `src/config/axios.ts` de `blurlink-fe`) — `msalInstance` (authority
-      **con** tenant id, ver gotcha #13; `redirectUri: '/redirect'`, `postLogoutRedirectUri: '/redirect'`,
+      **con** tenant id armada en código, `https://{subdominio}.ciamlogin.com/{tenantId}`, ver gotcha #13;
+      `redirectUri: '/redirect'`, `postLogoutRedirectUri: '/redirect'`,
       `cacheLocation: 'sessionStorage'`), `loginRequest` (scopes vacío) y `addEventCallback` en
       `LOGIN_SUCCESS` → `setActiveAccount` (en v5 el payload es `AccountInfo`)
 - [x] `src/main.tsx` — `await msalInstance.initialize()` antes de renderizar; `<MsalProvider>` va en
@@ -168,9 +176,9 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
       `<AuthenticatedTemplate>` / `<UnauthenticatedTemplate>`
 - [x] `SignOutButton` → `logoutRedirect({ account: activeAccount })` con `instance.getActiveAccount()`: MSAL
       solo saca el `logout_hint` del claim `login_hint` si recibe la cuenta (paso 1.3)
-- [x] `.env`: `VITE_API_BASE_URL=http://localhost:3000` y
-      `VITE_API_SCOPE_READ=api://<api client id>/Blurlinks.Read`; `apiRequest` en `src/config/msal.ts`.
-      Las variables se validan con Zod al arrancar (`src/config/env.ts`)
+- [x] `.env`: `VITE_API_BASE_URL=http://localhost:3000`; `apiRequest` en `src/config/msal.ts` con el scope
+      armado en código (`api://{VITE_ENTRA_API_CLIENT_ID}/{VITE_ENTRA_API_READ_SCOPE}`). Las variables se validan con Zod
+      al arrancar (`src/config/env.ts`)
 - [x] `src/hooks/useApiFetch.ts` — espera `inProgress === InteractionStatus.None`, `acquireTokenSilent`
       con fallback a `acquireTokenRedirect` ante `InteractionRequiredAuthError`, `Authorization: Bearer`
       en el fetch y la respuesta validada con un schema de Zod (`src/schemas/user.schema.ts`)
@@ -213,9 +221,10 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
     `…/{subdominio}.onmicrosoft.com`, pero el `issuer` de este tenant usa el GUID
     (`https://82c024ff-….ciamlogin.com/…`, mismo caso que el gotcha #1) → `issuer_validation_failed`,
     envuelto como `endpoints_resolution_error`. → Authority **con** tenant ID:
-    `https://blurlinkdemo.ciamlogin.com/82c024ff-3df5-41f3-84f5-5209bdf0ff6e`. Alternativa de la doc de
-    MSAL: authority por nombre + `knownAuthorities` con `blurlinkdemo.ciamlogin.com` y
-    `82c024ff-….ciamlogin.com`
+    `https://blurlinkdemo.ciamlogin.com/82c024ff-3df5-41f3-84f5-5209bdf0ff6e`. El frontend la arma en
+    `src/config/msal.ts` con el subdominio y el tenant ID del `.env`, así que no se puede olvidar el tenant
+    ID. Alternativa de la doc de MSAL: authority por nombre + `knownAuthorities` con
+    `blurlinkdemo.ciamlogin.com` y `82c024ff-….ciamlogin.com`
 
 ---
 

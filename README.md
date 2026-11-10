@@ -23,6 +23,7 @@ El frontend está en [demo-fe-entra-external-id-blurlink](https://github.com/bas
    ENTRA_TENANT_SUBDOMAIN=your-external-tenant-subdomain
    ENTRA_TENANT_ID=your-external-tenant-id
    ENTRA_API_CLIENT_ID=your-api-app-client-id
+   ENTRA_API_READ_SCOPE=Blurlinks.Read
    CORS_ORIGIN=http://localhost:5173
    ```
 
@@ -31,6 +32,7 @@ El frontend está en [demo-fe-entra-external-id-blurlink](https://github.com/bas
    - `ENTRA_TENANT_SUBDOMAIN`: en el menú de la izquierda entra a **Entra ID** y luego a **Overview**. En la pestaña **Overview** mira **Primary domain**. El subdominio es la parte de antes de `.onmicrosoft.com`. Por ejemplo, si el dominio es `blurlinkdemo.onmicrosoft.com`, el subdominio es `blurlinkdemo`.
    - `ENTRA_TENANT_ID`: en la misma pestaña, el valor de **Tenant ID**.
    - `ENTRA_API_CLIENT_ID`: en **App registrations**, pestaña **All applications**, busca tu API y copia el valor de la columna **Application (client) ID**.
+   - `ENTRA_API_READ_SCOPE`: el nombre del scope que creaste en **Expose an API**, sin el `api://...` del inicio. Si usaste el de la guía, déjalo como está.
    - `CORS_ORIGIN`: la URL del frontend, sin `/` al final. Si usas el frontend de esta demo, déjala como está.
 
 3. Levanta la API. Queda en `http://localhost:3000`.
