@@ -172,8 +172,8 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
       en el fetch y la respuesta validada con un schema de Zod (`src/schemas/user.schema.ts`)
 - [x] Mensaje de bienvenida (`WelcomeMessage`): `GET /me` con el access token → «¡Bienvenido, {name}!»
       y debajo los datos del usuario (nombre, apellido y email)
-- [x] `vite.config.ts` → `server: { port: 5173, strictPort: true }` para que el redirect URI
-      nunca se desalinee
+- [x] `vite.config.ts` → `server: { port: 5173, strictPort: true }` para que Vite no salte a otro
+      puerto: el CORS del backend solo acepta `http://localhost:5173`
 
 ---
 
@@ -186,8 +186,9 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
    Discovery doc de este tenant: `issuer` usa el **tenant ID como subdominio**
    (`https://{tenantId}.ciamlogin.com/{tenantId}/v2.0`), mientras que `jwks_uri` usa el subdominio
    (`https://{subdominio}.ciamlogin.com/{tenantId}/discovery/v2.0/keys`)
-2. **Redirect URI 3000 vs 5173.** Los tutoriales de Microsoft asumen `create-react-app` en 3000;
-   Vite corre en 5173. Registrar 5173.
+2. **Redirect URI de los tutoriales.** Los tutoriales de Microsoft registran `http://localhost:3000/`.
+   En `localhost` Entra ignora el puerto, pero la ruta tiene que coincidir exacta, y aquí es `/redirect`
+   → registrar `http://localhost:5173/redirect`.
 3. **Falta el admin consent** (paso 1.3) → `acquireTokenSilent` falla siempre en tenant externo.
 4. **Se pide token con `openid profile` y el backend rechaza el `aud`.** Para llamar a la API hay
    que pedir `api://{apiClientId}/Blurlinks.Read`, no scopes OIDC. Un token con audiencia Graph
