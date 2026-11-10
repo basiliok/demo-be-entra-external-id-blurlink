@@ -29,7 +29,7 @@ El frontend está en [demo-fe-entra-external-id-blurlink](https://github.com/bas
 
    Reemplaza los valores que empiezan con `your-` por los de tu tenant. Los encuentras en el [Microsoft Entra admin center](https://entra.microsoft.com/). Antes revisa, arriba a la derecha, que estés en el tenant externo de este proyecto. Si no, cámbialo con el ícono del engranaje.
 
-   - `ENTRA_TENANT_SUBDOMAIN`: en el menú de la izquierda entra a **Entra ID** y luego a **Overview**. En la pestaña **Overview** mira **Primary domain**. El subdominio es la parte de antes de `.onmicrosoft.com`. Por ejemplo, si el dominio es `blurlinkdemo.onmicrosoft.com`, el subdominio es `blurlinkdemo`.
+   - `ENTRA_TENANT_SUBDOMAIN`: en el menú de la izquierda entra a **Entra ID** y luego a **Overview**. En la pestaña **Overview** mira **Primary domain**. El subdominio es la parte de antes de `.onmicrosoft.com`. Por ejemplo, si el dominio es `miempresa.onmicrosoft.com`, el subdominio es `miempresa`.
    - `ENTRA_TENANT_ID`: en la misma pestaña, el valor de **Tenant ID**.
    - `ENTRA_API_CLIENT_ID`: en **App registrations**, pestaña **All applications**, busca tu API y copia el valor de la columna **Application (client) ID**.
    - `ENTRA_API_READ_SCOPE`: el nombre del scope que creaste en **Expose an API**, sin el `api://...` del inicio. Si usaste el de la guía, déjalo como está.

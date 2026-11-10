@@ -21,19 +21,6 @@ React SPA (5173)  ──login redirect──►  {subdominio}.ciamlogin.com   (u
 Dos app registrations separadas (SPA + API), un solo user flow, Auth Code + PKCE.
 El backend es **resource server puro**: no redirige, no tiene sesión, sólo valida el token.
 
-## Postman
-
-La colección espeja 1:1 los endpoints del código. Cuando agregues, cambies o elimines un endpoint,
-actualizá la colección en el mismo turno con el MCP `postman` — sin esperar a que te lo pidan.
-
-- Colección: `30981283-279b7495-6332-4112-8aab-1773247af5d6` (para `updateCollectionRequest` usar
-  el UUID sin el prefijo del owner)
-- Las URLs siempre usan `{{baseUrl}}`, nunca host ni puerto hardcodeados
-- Todo request lleva al menos un test de status code
-
-Nota: `deleteCollectionRequest` no existe en el servidor MCP `minimal`. Si hace falta borrar,
-verificá con `getEnabledTools`.
-
 ---
 
 # Plan de implementación
@@ -56,7 +43,7 @@ no en portal.azure.com.
 - [x] Add a subscription: suscripción + resource group
 - [x] Create — **tarda hasta 30 min**
 - [x] Anotar **Directory (tenant) ID** y **subdominio** (`xxx` de `xxx.onmicrosoft.com`)
-      → tenant `Blurlink Demo`, ID `82c024ff-3df5-41f3-84f5-5209bdf0ff6e`, subdominio `blurlinkdemo`
+      → van en el `.env`: `ENTRA_TENANT_ID` y `ENTRA_TENANT_SUBDOMAIN` (en el FE, con prefijo `VITE_`)
 
 ### 1.2 Registrar la API (backend)
 - [x] `App registrations > New registration` → `blurlink-demo-api`, *Single tenant only*
@@ -69,7 +56,8 @@ no en portal.azure.com.
 - [x] `Token configuration > Add optional claim > Access > email, given_name, family_name`
       (datos del usuario para `GET /me`; el access token no los trae por defecto)
 - [x] Verificar en `Manifest` que `accessTokenAcceptedVersion` / `requestedAccessTokenVersion` sea **2**
-- [x] Anotar **Application (client) ID** de la API → `e64a2bd2-3e23-4090-9b4b-5e5ecfa9708b`
+- [x] Anotar **Application (client) ID** de la API → va en el `.env` como `ENTRA_API_CLIENT_ID`
+      (en el FE, `VITE_ENTRA_API_CLIENT_ID`)
 
 ### 1.3 Registrar el SPA (frontend)
 - [x] `App registrations > New registration` → `blurlink-demo-spa`, *Single tenant only*, y en el
@@ -93,7 +81,7 @@ no en portal.azure.com.
 - [x] `API permissions > Add a permission > Microsoft Graph > Delegated` → `openid` + `offline_access`
 - [x] **`Grant admin consent for <tenant>`** ← crítico: en tenants externos los usuarios
       consumidores no pueden consentir solos; sin esto `acquireTokenSilent` falla siempre
-- [x] Anotar **client ID** del SPA → `ba599bb7-09a5-4551-a9da-7d7e897888ce`
+- [x] Anotar **client ID** del SPA → va en el `.env` del FE como `VITE_ENTRA_SPA_CLIENT_ID`
 
 ### 1.4 Crear el user flow
 - [x] `Entra ID > External Identities > User flows > New user flow` → nombre `SignUpSignIn`
@@ -196,8 +184,8 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
    → Leer `issuer` y `jwks_uri` del discovery doc:
    `https://{subdominio}.ciamlogin.com/{tenantId}/v2.0/.well-known/openid-configuration`
    Discovery doc de este tenant: `issuer` usa el **tenant ID como subdominio**
-   (`https://82c024ff-….ciamlogin.com/82c024ff-…/v2.0`), mientras que `jwks_uri` usa `blurlinkdemo`
-   (`https://blurlinkdemo.ciamlogin.com/82c024ff-…/discovery/v2.0/keys`)
+   (`https://{tenantId}.ciamlogin.com/{tenantId}/v2.0`), mientras que `jwks_uri` usa el subdominio
+   (`https://{subdominio}.ciamlogin.com/{tenantId}/discovery/v2.0/keys`)
 2. **Redirect URI 3000 vs 5173.** Los tutoriales de Microsoft asumen `create-react-app` en 3000;
    Vite corre en 5173. Registrar 5173.
 3. **Falta el admin consent** (paso 1.3) → `acquireTokenSilent` falla siempre en tenant externo.
@@ -219,12 +207,12 @@ Repo: `c:\workspace\demo-fe-entra-external-id-blurlink`
     → desde MSAL 5.10 se valida que el `issuer` del discovery doc coincida con la authority. Con
     `https://{subdominio}.ciamlogin.com/` (sin tenant ID, como el tutorial oficial) MSAL la convierte a
     `…/{subdominio}.onmicrosoft.com`, pero el `issuer` de este tenant usa el GUID
-    (`https://82c024ff-….ciamlogin.com/…`, mismo caso que el gotcha #1) → `issuer_validation_failed`,
+    (`https://{tenantId}.ciamlogin.com/…`, mismo caso que el gotcha #1) → `issuer_validation_failed`,
     envuelto como `endpoints_resolution_error`. → Authority **con** tenant ID:
-    `https://blurlinkdemo.ciamlogin.com/82c024ff-3df5-41f3-84f5-5209bdf0ff6e`. El frontend la arma en
+    `https://{subdominio}.ciamlogin.com/{tenantId}`. El frontend la arma en
     `src/config/msal.ts` con el subdominio y el tenant ID del `.env`, así que no se puede olvidar el tenant
     ID. Alternativa de la doc de MSAL: authority por nombre + `knownAuthorities` con
-    `blurlinkdemo.ciamlogin.com` y `82c024ff-….ciamlogin.com`
+    `{subdominio}.ciamlogin.com` y `{tenantId}.ciamlogin.com`
 
 ---
 
