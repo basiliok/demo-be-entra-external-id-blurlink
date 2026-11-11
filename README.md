@@ -7,7 +7,7 @@ El frontend está en [demo-fe-entra-external-id-blurlink](https://github.com/bas
 ## Requisitos
 
 - Node.js 24
-- Un tenant externo de Entra External ID con la API registrada (de ahí salen los valores del `.env`). Para configurarlo, sigue [esta guía](url).
+- Un tenant externo de Entra External ID con la API registrada (de ahí salen los valores del `.env`). Para configurarlo, sigue [esta guía](https://dev.to/basiliok/como-configurar-microsoft-entra-external-id-para-el-login-de-tu-app-web-idd).
 
 ## Cómo levantarlo
 
